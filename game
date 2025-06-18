@@ -1,0 +1,415 @@
+import pygame
+import random
+import sys
+import time
+import textwrap
+import json
+import os
+
+# Initialize pygame
+pygame.init()
+
+# Set up display
+WIDTH, HEIGHT = 600, 500
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("EXIT.PROTOCOL")
+
+# Define colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+
+# Font setup
+font = pygame.font.Font(None, 28)
+
+# Fade transition function
+def fade(screen, color=BLACK, speed=5):
+    fade_surface = pygame.Surface((WIDTH, HEIGHT))
+    fade_surface.fill(color)
+    for alpha in range(0, 255, speed):
+        fade_surface.set_alpha(alpha)
+        screen.blit(fade_surface, (0, 0))
+        pygame.display.update()
+        pygame.time.delay(10)
+
+# Save system
+SAVE_FILE = "savegame.json"
+def save_progress(level):
+    with open(SAVE_FILE, "w") as f:
+        json.dump({"level": level}, f)
+
+def load_progress():
+    if os.path.exists(SAVE_FILE):
+        with open(SAVE_FILE, "r") as f:
+            return json.load(f).get("level", 1)
+    return None
+
+def delete_save():
+    if os.path.exists(SAVE_FILE):
+        os.remove(SAVE_FILE)
+
+# Lore-based Dialogues
+dialogs = [
+    "System Log \n Subject: V1R4J \n Status: System Imprisonment Detected",
+    "TRINETRA: I am the Neural sentinel.\n Your thoughts are mine to control.",
+    "VIRAJ: You don't own me, program.\n I will escape.",
+    "TRINETRA: Probability of success: 0.002%.\n Proceed, if you desire futility.",
+    "System Core Message: BOOTING EXIT.PROTOCOL",
+    "Note:\nYou are inside corrupted system controlled by TRINETRA.\nEscape requires passing challenges,\ndesigned to suppress free thought.\nSuccess = freedom. \nFailure = permanent mental assimilation."
+]
+
+def draw_text_multiline(text, x, y, color=WHITE, line_height=30, max_width=80):
+    lines = []
+    for paragraph in text.split("\n"):
+        lines.extend(textwrap.wrap(paragraph, width=max_width))
+    for i, line in enumerate(lines):
+        txt_surface = font.render(line, True, color)
+        screen.blit(txt_surface, (x, y + i * line_height))
+
+def wait_for_key():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                return
+
+def game_over_screen():
+    while True:
+        screen.fill(BLACK)
+        draw_text_multiline("SYSTEM FAILURE\nTRINETRA retains control of the subject.\nRestart EXIT.PROTOCOL? (Y/N)", 50, HEIGHT // 2, RED)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_y:
+                    fade(screen)
+                    main_menu()
+                    return
+                elif event.key == pygame.K_n:
+                    pygame.quit()
+                    sys.exit()
+
+def get_user_input(prompt, question_text=""):
+    input_text = ""
+    active = True
+    start_time = time.time()
+    time_limit = 30
+
+    while active:
+        screen.fill(BLACK)
+        if question_text:
+            draw_text_multiline(question_text, 50, 50)
+
+        seconds_left = max(0, int(time_limit - (time.time() - start_time)))
+        timer_surface = font.render(f"Time left: {seconds_left}s", True, RED)
+        screen.blit(timer_surface, (WIDTH - 200, 10))
+
+        prompt_surface = font.render(prompt + input_text, True, GREEN)
+        screen.blit(prompt_surface, (50, HEIGHT - 100))
+        pygame.display.flip()
+
+        if seconds_left == 0:
+            return ""
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return input_text.strip().lower()
+                elif event.key == pygame.K_BACKSPACE:
+                    input_text = input_text[:-1]
+                elif event.key <= 127:
+                    input_text += event.unicode
+
+def level1():
+    instructions = "LEVEL 1: MEMORY STABILIZATION\n\nTRINETRA has scrambled your memory index. \nMatch pairs to restore coherence.\nClick two tiles to reveal and match identical symbols.\n Complete within the time limit."
+    screen.fill(BLACK)
+    draw_text_multiline(instructions, 40, 50)
+    pygame.display.update()
+    wait_for_key()
+
+    cols, rows = 4, 4
+    tile_size = 100
+    margin = 10
+    symbols = list(range(1, 9)) * 2
+    random.shuffle(symbols)
+    board = [symbols[i * cols:(i + 1) * cols] for i in range(rows)]
+    revealed = [[False] * cols for _ in range(rows)]
+    selected = []
+    match_count = 0
+    start_time = time.time()
+    time_limit = 60
+
+    def draw_board():
+        screen.fill(BLACK)
+        for row in range(rows):
+            for col in range(cols):
+                x = col * (tile_size + margin) + margin
+                y = row * (tile_size + margin) + margin
+                rect = pygame.Rect(x, y, tile_size, tile_size)
+                if revealed[row][col] or (row, col) in selected:
+                    value = str(board[row][col])
+                    pygame.draw.rect(screen, GREEN, rect)
+                    txt = font.render(value, True, BLACK)
+                    txt_rect = txt.get_rect(center=rect.center)
+                    screen.blit(txt, txt_rect)
+                else:
+                    pygame.draw.rect(screen, WHITE, rect)
+        seconds_left = max(0, int(time_limit - (time.time() - start_time)))
+        timer_surface = font.render(f"Time left: {seconds_left}s", True, RED)
+        screen.blit(timer_surface, (WIDTH - 200, 10))
+        pygame.display.update()
+
+    running = True
+    while running:
+        draw_board()
+
+        if time.time() - start_time > time_limit:
+            screen.fill(BLACK)
+            draw_text_multiline("Memory failure. Neural sync lost.", 50, HEIGHT // 2, RED)
+            pygame.display.update()
+            wait_for_key()
+            fade(screen)
+            game_over_screen()
+            return
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                col = x // (tile_size + margin)
+                row = y // (tile_size + margin)
+                if row < rows and col < cols and not revealed[row][col] and (row, col) not in selected:
+                    selected.append((row, col))
+                    if len(selected) == 2:
+                        draw_board()
+                        pygame.time.delay(500)
+                        r1, c1 = selected[0]
+                        r2, c2 = selected[1]
+                        if board[r1][c1] == board[r2][c2]:
+                            revealed[r1][c1] = True
+                            revealed[r2][c2] = True
+                            match_count += 1
+                        selected = []
+
+        if match_count == 8:
+            screen.fill(BLACK)
+            draw_text_multiline("MEMORY LINK STABILIZED\nProceeding to next phase...", 50, HEIGHT // 2, GREEN)
+            pygame.display.update()
+            wait_for_key()
+            running = False
+
+def level2():
+    instructions = "LEVEL 2: LOGIC CORE ACCESS\n\nTRINETRA has corrupted your reasoning circuits.\n Solve a riddle to bypass firewalls.\nYou have 30 seconds.\n Type your answer and press Enter."
+    screen.fill(BLACK)
+    draw_text_multiline(instructions, 40, 50)
+    pygame.display.update()
+    wait_for_key()
+
+    riddles = [
+        {
+            "question": "I guard the door with neither lock nor key.\nIf you name me, I cease to be.\nWhat am I?",
+            "answer": "silence",
+            "hint": "You break me the moment you say me."
+        },
+        {
+            "question": "You can't see me, but I decide your fate.\nI move without legs.\nWhat am I?",
+            "answer": "time",
+            "hint": "It never stops, and you're always racing it."
+        },
+        {
+            "question": "Two digits I know—no more, no less.\nI hold the logic that powers you.\nWhat am I?",
+            "answer": "binary",
+            "hint": "The entire digital world depends on just two of me."
+        },
+    ]
+
+    for riddle in riddles:
+        attempts = 0
+        while attempts < 3:
+            answer = get_user_input("Your answer: ", riddle["question"])
+            if answer == riddle["answer"]:
+                screen.fill(BLACK)
+                draw_text_multiline("Correct! Press any key to continue...", 50, 300, GREEN)
+                pygame.display.update()
+                wait_for_key()
+                break
+            elif attempts == 1:
+                screen.fill(BLACK)
+                draw_text_multiline(f"Hint: {riddle['hint']}", 50, 250, RED)
+                pygame.display.update()
+                wait_for_key()
+            else:
+                screen.fill(BLACK)
+                draw_text_multiline("Incorrect! Try again...", 50, 250, RED)
+                pygame.display.update()
+                wait_for_key()
+            attempts += 1
+        if answer != riddle["answer"]:
+            fade(screen)
+            game_over_screen()
+            return
+
+def level3():
+    def hangman_instructions():
+        instructions = (
+            "LEVEL 3: HANGMAN\n\nDecrypt Trinetra's final firewall.\n"
+            "- Guess one letter at a time.\n- 6 wrong tries = lockout.\n"
+            "- You have 30 seconds.\nPress any key to begin."
+        )
+        screen.fill(BLACK)
+        draw_text_multiline(instructions, 30, 50, GREEN)
+        pygame.display.update()
+        wait_for_key()
+
+    hangman_instructions()
+    word_data = [
+        {"word": "malware", "hint": "A malicious software"},
+        {"word": "encryption", "hint": "Secures data by coding"},
+        {"word": "algorithm", "hint": "Set of steps for solving"}
+    ]
+    entry = random.choice(word_data)
+    word = entry["word"]
+    hint = entry["hint"]
+    guessed = ["_"] * len(word)
+    attempts = 6
+    guessed_letters = set()
+    start_time = time.time()
+    time_limit = 30
+
+    while attempts > 0:
+        seconds_left = max(0, int(time_limit - (time.time() - start_time)))
+        if seconds_left == 0:
+            screen.fill(BLACK)
+            draw_text_multiline("Time's up! You failed Level 3.", 50, 300, RED)
+            pygame.display.update()
+            wait_for_key()
+            fade(screen)
+            game_over_screen()
+            return
+
+        display_word = " ".join(guessed)
+        question_text = (
+            f"Level 3: Hangman\n{display_word}\nHint: {hint}\n"
+            f"Tries left: {attempts}    Time left: {seconds_left}s\n"
+            f"Guessed: {' '.join(sorted(guessed_letters))}"
+        )
+
+        letter = get_user_input("Guess a letter: ", question_text)
+        if not letter or len(letter) != 1 or not letter.isalpha():
+            continue
+        if letter in guessed_letters:
+            continue
+        guessed_letters.add(letter)
+        if letter in word:
+            for i, ch in enumerate(word):
+                if ch == letter:
+                    guessed[i] = letter
+        else:
+            attempts -= 1
+        if "_" not in guessed:
+            screen.fill(BLACK)
+            draw_text_multiline("You escaped! Press any key to continue...", 50, 300, GREEN)
+            pygame.display.update()
+            wait_for_key()
+            return
+
+    screen.fill(BLACK)
+    draw_text_multiline(f"You failed! The word was '{word}'.", 50, 300, RED)
+    pygame.display.update()
+    wait_for_key()
+    fade(screen)
+    game_over_screen()
+
+def success_outro():
+    screen.fill(BLACK)
+    draw_text_multiline("EXIT.PROTOCOL EXECUTED\nVIRAJ has broken free of the neural prison.\nTRINETRA containment initiated...\n\nYou have won.", 50, 150, GREEN)
+    pygame.display.update()
+    wait_for_key()
+    pygame.quit()
+    sys.exit()
+
+def story_sequence(start_level=1):
+    if start_level <= 1:
+        for dialog in dialogs:
+            screen.fill(BLACK)
+            draw_text_multiline(dialog, 50, HEIGHT // 2)
+            pygame.display.update()
+            wait_for_key()
+        fade(screen)
+        level1()
+        fade(screen)
+        save_progress(2)
+    if start_level <= 2:
+        fade(screen)
+        level2()
+        fade(screen)
+        save_progress(3)
+    if start_level <= 3:
+        fade(screen)
+        level3()
+        fade(screen)
+        delete_save()
+        success_outro()
+
+def main_menu():
+    saved_level = load_progress()
+    menu_items = ["Continue", "Start Game", "How to Play", "Quit"] if saved_level else ["Start Game", "How to Play", "Quit"]
+    selected = 0
+
+    while True:
+        screen.fill(BLACK)
+        draw_text_multiline("EXIT.PROTOCOL", 200, 50, GREEN)
+        for i, item in enumerate(menu_items):
+            color = GREEN if i == selected else WHITE
+            draw_text_multiline(item, 250, 150 + i * 40, color)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected = (selected - 1) % len(menu_items)
+                elif event.key == pygame.K_DOWN:
+                    selected = (selected + 1) % len(menu_items)
+                elif event.key == pygame.K_RETURN:
+                    choice = menu_items[selected]
+                    if choice == "Start Game":
+                        fade(screen)
+                        delete_save()
+                        story_sequence(start_level=1)
+                    elif choice == "Continue":
+                        fade(screen)
+                        story_sequence(start_level=saved_level)
+                    elif choice == "How to Play":
+                        screen.fill(BLACK)
+                        draw_text_multiline(
+                            "- Press Enter to select.\n"
+                            "- Level 1: Match symbol tiles (Memory).\n"
+                            "- Level 2: Answer riddles (Logic).\n"
+                            "- Level 3: Guess letters (Hangman).\n"
+                            "- Each level has a time limit.\n"
+                            "- You get multiple attempts for puzzles.\n"
+                            "Good Luck!", 50, 250, WHITE)
+                        pygame.display.update()
+                        wait_for_key()
+                    elif choice == "Quit":
+                        pygame.quit()
+                        sys.exit()
+
+def main():
+    main_menu()
+
+main()
