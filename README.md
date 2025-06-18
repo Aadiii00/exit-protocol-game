@@ -30,7 +30,7 @@ In this immersive 3-level game, you play as **VIRAJ**, a subject trapped in a vi
 
 | Memory Match | Riddle Firewall | Hangman |
 |--------------|------------------|---------|
-| ![Level 1](C:\Users\aditya\Pictures\Screenshots/level1.png) | ![Level 2](C:\Users\aditya\Pictures\Screenshots/level2.png) | ![Level 3](C:\Users\aditya\Pictures\Screenshots/level3.png) |
+| ![Level 1](level1.png) | ![Level 2](level2.png) | ![Level 3](level3.png) |
 
 ---
 
